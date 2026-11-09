@@ -87,7 +87,7 @@ const RULES = {
   kategorien: [
     {name:'Finanzen & Rechnungen', unwichtig:false, werbung_ausschliessen:true,
      absender:['paypal','sparkasse','volksbank','ing.de','dkb','comdirect','commerzbank','deutsche-bank','n26','klarna','postbank','finanzamt','elster'],
-     woerter:['rechnung','invoice','zahlung','kontoauszug','lastschrift','mahnung','überweisung','beitrag']},
+     woerter:['rechnung','invoice','zahlung','kontoauszug','lastschrift','mahnung','überweisung','beitrag','receipt','quittung','beleg','zahlungsbestätigung','payment']},
     {name:'Bestellungen & Versand', unwichtig:false, werbung_ausschliessen:true,
      absender:['amazon','ebay','dhl','dpd','hermes','ups.com','gls','zalando','otto.de','kleinanzeigen','temu','aliexpress'],
      woerter:['bestellung','versand','lieferung','sendung','paket','order','shipped','zugestellt','versandbestätigung']},

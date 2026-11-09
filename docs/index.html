@@ -525,7 +525,7 @@ body.framed .frame-cap{display:block;color:var(--muted);font-size:13px;text-alig
 #screen .acc-btn{padding:3px}
 #screen .icon-btn{width:38px;height:38px}
 #screen main.gutter{padding-left:12px;padding-right:12px}
-#screen .sync{position:absolute;left:0;right:0;margin:0 auto;width:max-content;top:calc(var(--sat) + 56px);z-index:14;box-shadow:var(--shadow-lg)}
+#screen .sync{position:absolute;left:0;right:0;margin:0 auto;width:max-content;bottom:calc(var(--sab) + 74px);z-index:14;box-shadow:var(--shadow-lg)}
 #screen .sync .lbl{display:inline}
 
 .tabbar{display:flex;justify-content:space-around;align-items:flex-start;padding:7px 8px calc(var(--sab) + 6px);background:color-mix(in srgb,var(--surface) 88%,transparent);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-top:1px solid var(--line);position:relative;z-index:12}
@@ -598,6 +598,28 @@ body.framed .frame-cap{display:block;color:var(--muted);font-size:13px;text-alig
 #screen .mm-foot{padding:12px 14px calc(12px + var(--sab))}
 #screen .drawer{width:100%;padding-top:var(--sat)}
 #screen .toast{bottom:calc(var(--sab) + 84px)}
+/* Ganzer Bildschirm auf dem iPhone (auch als Home-Bildschirm-App) */
+body:not(.framed) #phone{position:fixed;inset:0}
+html,body{overscroll-behavior:none}
+/* Posteingang auf dem Handy: flach statt Kasten im Kasten */
+#screen .inbox{margin:0 -12px}
+#screen .side{padding:2px 12px 8px;gap:6px}
+#screen .cat{padding:4px 11px 4px 5px;font-size:13px;gap:8px}
+#screen .cat .ci{width:24px;height:24px;border-radius:7px}
+#screen .cat .ci svg{width:14px;height:14px}
+#screen .panel{margin:0;border:0;border-radius:0;box-shadow:none;background:transparent}
+#screen .panel-head{padding:4px 12px 8px;border-bottom:0;background:color-mix(in srgb,var(--bg) 90%,transparent)}
+#screen .ph-title{display:none}
+#screen .search input{padding:9px 0}
+#screen .search-note{padding:8px 16px;border-bottom:0;border-radius:12px;margin:0 12px 6px}
+#screen .day-h{padding:14px 16px 6px;border-bottom:0;font-size:11.5px;background:color-mix(in srgb,var(--bg) 94%,transparent)}
+#screen .row{padding:10px 16px;gap:2px 12px;border-bottom:1px solid color-mix(in srgb,var(--line) 70%,transparent)}
+#screen .row:hover{background:transparent}
+#screen .row .from .ci{display:none}
+#screen .row .from{font-size:15px}
+#screen .row .line{font-size:13.5px}
+#screen .row .date{font-size:12px}
+#screen .more-btn{margin:16px auto calc(16px + var(--sab))}
 
 /* Anmeldung */
 .signin{flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:18px;padding:24px 8px 30px;position:relative;overflow:hidden}
@@ -920,7 +942,7 @@ const RULES = {
   kategorien: [
     {name:'Finanzen & Rechnungen', unwichtig:false, werbung_ausschliessen:true,
      absender:['paypal','sparkasse','volksbank','ing.de','dkb','comdirect','commerzbank','deutsche-bank','n26','klarna','postbank','finanzamt','elster'],
-     woerter:['rechnung','invoice','zahlung','kontoauszug','lastschrift','mahnung','überweisung','beitrag']},
+     woerter:['rechnung','invoice','zahlung','kontoauszug','lastschrift','mahnung','überweisung','beitrag','receipt','quittung','beleg','zahlungsbestätigung','payment']},
     {name:'Bestellungen & Versand', unwichtig:false, werbung_ausschliessen:true,
      absender:['amazon','ebay','dhl','dpd','hermes','ups.com','gls','zalando','otto.de','kleinanzeigen','temu','aliexpress'],
      woerter:['bestellung','versand','lieferung','sendung','paket','order','shipped','zugestellt','versandbestätigung']},
