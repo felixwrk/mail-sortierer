@@ -168,8 +168,10 @@ def _target(account):
 
 def secret_set(account, password):
     if IS_MAC:
+        # Base64, weil "security" Passwörter mit Sonderzeichen sonst als Hex ausgibt
+        enc = "b64:" + base64.b64encode(password.encode("utf-8")).decode("ascii")
         subprocess.run(["security", "add-generic-password", "-a", account, "-s", APP_NAME,
-                        "-w", password, "-U"], check=True, capture_output=True)
+                        "-w", enc, "-U"], check=True, capture_output=True)
     elif IS_WIN:
         blob = password.encode("utf-16-le")
         buf = ctypes.create_string_buffer(blob, len(blob))
@@ -193,7 +195,15 @@ def secret_get(account):
     if IS_MAC:
         r = subprocess.run(["security", "find-generic-password", "-a", account, "-s", APP_NAME, "-w"],
                            capture_output=True, text=True)
-        return r.stdout.strip() if r.returncode == 0 else None
+        if r.returncode != 0:
+            return None
+        val = r.stdout.strip()
+        if val.startswith("b64:"):
+            try:
+                return base64.b64decode(val[4:]).decode("utf-8")
+            except Exception:
+                return None
+        return val
     if IS_WIN:
         p = ctypes.POINTER(_CREDENTIAL)()
         if not _adv.CredReadW(_target(account), 1, 0, ctypes.byref(p)):
