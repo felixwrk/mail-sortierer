@@ -147,6 +147,14 @@ main{flex:1;display:flex;min-height:0}
 .mini.danger{color:var(--del-text)}
 .mini.danger:hover{border-color:var(--del);box-shadow:0 0 12px color-mix(in srgb,var(--del) 40%,transparent)}
 .abo-sum{margin:2px 8px 6px;font-size:13px;color:var(--muted)}
+.abo-total{font:800 15px var(--display);color:var(--accent-text);text-shadow:0 0 14px var(--glow);margin-left:2px;font-variant-numeric:tabular-nums}
+.abo{width:100%;border:1px solid transparent;background:none;text-align:left;cursor:pointer}
+.abo:hover{border-color:color-mix(in srgb,var(--cc,var(--accent)) 40%,transparent);box-shadow:0 0 16px color-mix(in srgb,var(--cc,var(--accent)) 16%,transparent)}
+.abo .price{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.abo .price b{display:block;font:800 14.5px var(--display)}
+.abo .price small{color:var(--muted);font-size:11.5px}
+.abo-note{margin:8px 8px 0;font-size:12px;color:var(--muted);display:flex;gap:6px;align-items:flex-start}
+.abo-note svg{width:14px;height:14px;flex:none;margin-top:1px}
 .abo-sum b{color:var(--ink)}
 .hero{position:relative;overflow:hidden;border-radius:26px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:26px;padding:36px 20px;min-height:460px;border:1px solid var(--line);background:radial-gradient(120% 90% at 50% 0%, color-mix(in srgb,var(--surface) 70%,transparent), transparent), var(--surface)}
 .hero > *{position:relative;z-index:1}
@@ -590,8 +598,8 @@ body.no-motion *, body.no-motion *::before, body.no-motion *::after{animation:no
         <div class="news-head"><span class="live"></span><h2>Was ist neu</h2><span>kurz zusammengefasst</span></div>
         <div class="news-body" id="newsBody"></div>
       </aside>
-      <aside class="news" aria-label="Deine Abos">
-        <div class="news-head"><span class="ci sm" style="--cc:#a879ff"><svg class="i" viewBox="0 0 24 24"><path d="M4 4h16v4H4z"/><path d="M4 12h10M4 16h7M4 20h12"/></svg></span><h2>Deine Abos</h2><span id="aboCount"></span></div>
+      <aside class="news" aria-label="Abos">
+        <div class="news-head"><span class="ci sm" style="--cc:#2bf598"><svg class="i" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 21v-5h5"/></svg></span><h2>Abos <span class="abo-total" id="aboTotal"></span></h2><span id="aboCount"></span></div>
         <div class="news-body" id="aboBody"></div>
       </aside>
     </div>
@@ -1006,39 +1014,75 @@ function openLetter(){
 }
 $('#stampBtn').onclick = openLetter;
 
-/* Abos: Absender mit Abmeldelink bzw. Newsletter, zusammengefasst */
-function renderAbos(){
-  const map = new Map(), now = Date.now()/1000;
-  for(const m of DATA.mails){
-    const cat = (m.category||'').toLowerCase();
-    if(!(m.bulk || cat.includes('newsletter') || cat.includes('sozial'))) continue;
-    if(!map.has(m.from_name)) map.set(m.from_name, {name:m.from_name, addr:m.from_addr, n:0, n30:0, last:0, unsub:null, cat:m.category});
-    const a = map.get(m.from_name);
-    a.n++; if(now - m.ts < 30*86400) a.n30++;
-    if(m.ts > a.last) a.last = m.ts;
-    if(m.unsub && !a.unsub) a.unsub = m.unsub;
+/* Abos: bezahlte Abos aus Rechnungen und Zahlungsbestätigungen erkennen (nur anzeigen) */
+const SUB_SERVICES = [
+  {name:'Netflix', re:/netflix/i, color:'#e50914'},
+  {name:'Spotify', re:/spotify/i, color:'#1db954'},
+  {name:'Disney+', re:/disney\s?\+|disneyplus|disney plus/i, color:'#2f6bff'},
+  {name:'Amazon Prime', re:/amazon prime|prime-mitgliedschaft|prime mitgliedschaft|prime video/i, color:'#00a8e1'},
+  {name:'Apple', re:/icloud|apple music|apple one|apple tv|\bapple\b/i, color:'#a3aab8'},
+  {name:'YouTube Premium', re:/youtube premium|youtube music/i, color:'#ff3b3b'},
+  {name:'DAZN', re:/dazn/i, color:'#f8f800'},
+  {name:'Sky / WOW', re:/\bsky\b|wow tv|wowtv/i, color:'#0072c9'},
+  {name:'RTL+', re:/rtl\+|rtlplus|rtl plus/i, color:'#ff5a2b'},
+  {name:'Paramount+', re:/paramount/i, color:'#0064ff'},
+  {name:'Audible', re:/audible/i, color:'#f7991c'},
+  {name:'Microsoft 365', re:/microsoft 365|office 365/i, color:'#2b88d8'},
+  {name:'Xbox Game Pass', re:/game pass/i, color:'#107c10'},
+  {name:'PlayStation Plus', re:/playstation plus|ps plus/i, color:'#2d64e6'},
+  {name:'Google One', re:/google one/i, color:'#4285f4'},
+  {name:'ChatGPT Plus', re:/openai|chatgpt/i, color:'#10a37f'},
+  {name:'Adobe', re:/adobe/i, color:'#ff3a2b'},
+  {name:'Telekom', re:/telekom/i, color:'#e20074'},
+  {name:'Vodafone', re:/vodafone/i, color:'#e60000'},
+  {name:'O2', re:/\bo2\b|telefónica|telefonica/i, color:'#0050ff'},
+  {name:'Fitnessstudio', re:/mcfit|fitx|clever fit|john reed|urban sports/i, color:'#ff7a1a'},
+];
+const SUB_PAY = /rechnung|zahlung|beleg|quittung|abbuchung|abgebucht|abonnement|\babo\b|mitgliedschaft|verlänger|receipt|invoice|payment|bezahlt|belastet/i;
+function amountOf(t){
+  const m = t.match(/(\d{1,4}(?:\.\d{3})*,\d{2})\s?(?:€|eur\b)/i) || t.match(/€\s?(\d{1,4}(?:\.\d{3})*,\d{2})/);
+  return m ? parseFloat(m[1].replace(/\./g,'').replace(',','.')) : null;
+}
+function euro(v){ return v.toLocaleString('de-DE',{minimumFractionDigits:2, maximumFractionDigits:2}) + ' €'; }
+function detectSubs(){
+  const found = new Map();
+  for(const m of [...DATA.mails].sort((a,b)=>b.ts-a.ts)){
+    const head = m.from_name+' '+m.from_addr+' '+m.subject+' '+m.snippet;
+    const text = head + ' ' + (m.body||'');
+    if(!SUB_PAY.test(text)) continue;
+    const svc = SUB_SERVICES.find(sv=>sv.re.test(head));
+    if(!svc) continue;
+    if(found.has(svc.name)){ found.get(svc.name).count++; continue; }
+    const amt = amountOf(m.subject+' '+m.snippet+' '+(m.body||''));
+    if(!amt) continue;
+    const yearly = /jährlich|jahresabo|pro jahr|12 monate|yearly|annual/i.test(text);
+    found.set(svc.name, {...svc, amount:amt, yearly, monthly: yearly ? amt/12 : amt, last:m.ts, mail:m, count:1});
   }
-  const abos = [...map.values()].sort((a,b)=>b.n-a.n || b.last-a.last);
-  const total = abos.reduce((x,a)=>x+a.n30,0);
-  $('#aboCount').textContent = abos.length ? `${abos.length} Absender` : '';
+  return [...found.values()].sort((a,b)=>b.monthly-a.monthly);
+}
+function renderAbos(){
+  const subs = detectSubs();
+  const monthly = subs.reduce((x,a)=>x+a.monthly, 0);
+  $('#aboTotal').textContent = subs.length ? `(€${Math.round(monthly)}/Monat)` : '';
+  $('#aboCount').textContent = subs.length ? `${subs.length} erkannt` : '';
   const body = $('#aboBody');
-  if(!abos.length){ body.innerHTML = '<div class="news-empty">Keine Newsletter oder Abos gefunden.</div>'; return; }
-  let html = `<div class="abo-sum"><b>${total} Mails</b> im letzten Monat kamen von Abos und Newslettern.</div>`;
-  abos.forEach((a,i)=>{
-    const freq = a.n30 >= 2 ? `${a.n30}× in 30 Tagen` : 'selten';
-    const unsub = !a.unsub ? '' : IS_DEMO
-      ? `<button class="mini danger" type="button" data-demo-unsub="${esc(a.name)}">Abmelden</button>`
-      : `<a class="mini danger" href="${esc(a.unsub)}" target="_blank" rel="noopener">Abmelden</a>`;
-    html += `<div class="abo" style="--i:${i}"><div class="av" style="background:${avColor(a.addr)}">${esc(initial(a.name))}</div>
-      <div class="txt"><b>${esc(a.name)}</b><small>${freq} · zuletzt ${fmtDate(a.last)}</small></div>
-      <button class="mini" type="button" data-show="${esc(a.name)}">Mails</button>${unsub}</div>`;
+  if(!subs.length){
+    body.innerHTML = '<div class="news-empty">Keine bezahlten Abos gefunden. Sie werden aus Rechnungen erkannt, z. B. von Netflix oder Spotify.</div>';
+    return;
+  }
+  let html = `<div class="abo-sum">Zusammen <b>${euro(monthly)}</b> im Monat, also etwa <b>${euro(monthly*12)}</b> im Jahr.</div>`;
+  subs.forEach((a,i)=>{
+    const next = new Date(a.last*1000); if(a.yearly) next.setFullYear(next.getFullYear()+1); else next.setMonth(next.getMonth()+1);
+    const nextTxt = next.toLocaleDateString('de-DE', next.getFullYear()===new Date().getFullYear() ? {day:'numeric', month:'short'} : {day:'numeric', month:'short', year:'numeric'});
+    const info = a.yearly ? `${euro(a.amount)} jährlich · nächste ≈ ${nextTxt}` : `monatlich · nächste ≈ ${nextTxt}`;
+    html += `<button class="abo" type="button" data-uid="${esc(a.mail.uid)}" style="--i:${i};--cc:${a.color}">
+      <div class="av" style="background:${a.color}">${esc(initial(a.name))}</div>
+      <div class="txt"><b>${esc(a.name)}</b><small>${info}</small></div>
+      <div class="price"><b>${euro(a.monthly)}</b><small>pro Monat</small></div></button>`;
   });
+  html += `<div class="abo-note"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>Erkannt aus Rechnungen und Zahlungsbestätigungen. Nur zur Übersicht, hier wird nichts gekündigt.</div>`;
   body.innerHTML = html;
-  body.querySelectorAll('[data-show]').forEach(b=>b.onclick=()=>{
-    const n = b.dataset.show;
-    go('inbox', ()=>{ currentCat='__all'; $('#inboxSearch').value=n; searchQ=n.toLowerCase(); $('#inboxClear').hidden=false; renderInbox(); });
-  });
-  body.querySelectorAll('[data-demo-unsub]').forEach(b=>b.onclick=()=>toast(`In der echten App öffnet sich jetzt die Abmeldeseite von ${b.dataset.demoUnsub}.`));
+  body.querySelectorAll('.abo').forEach(b=>b.onclick=()=>{ const m = DATA.mails.find(x=>x.uid===b.dataset.uid); if(m) openModal(m, b); });
 }
 $('#toSwipe').onclick = ()=>go('swipe');
 $('#brand').onclick = ()=>{ if(account) go('home'); };
