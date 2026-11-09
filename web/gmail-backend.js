@@ -4,7 +4,7 @@
 const BUILTIN_CLIENT_ID = '544129934675-180k6p2vvlkqqgq9hoqbi242643dg2fi.apps.googleusercontent.com';
 const GMAIL = 'https://gmail.googleapis.com/gmail/v1/users/me';
 const SCOPE = 'https://www.googleapis.com/auth/gmail.modify';
-const FIRST_BATCH = 150;
+const FIRST_BATCH = 80;
 
 function lsGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
 function lsSet(k, v){ try{ localStorage.setItem(k, v); }catch(e){} }
@@ -33,22 +33,42 @@ function authExpired(){
     setTimeout(()=>login(true), 700);
   }
 }
+/* Google erlaubt nur eine begrenzte Zahl Anfragen pro Minute. Deshalb: gleichmäßig drosseln
+   und bei einer Sperre ("Quota exceeded") kurz für alle Anfragen pausieren. */
+const MIN_GAP_MS = 45;                    // höchstens ~22 Anfragen pro Sekunde
+let nextSlot = 0, cooldownUntil = 0;
+const sleep = ms => new Promise(res=>setTimeout(res, ms));
+async function throttle(){
+  for(;;){
+    const now = Date.now();
+    if(cooldownUntil > now){ await sleep(cooldownUntil - now); continue; }
+    const slot = Math.max(now, nextSlot);
+    nextSlot = slot + MIN_GAP_MS;
+    if(slot > now) await sleep(slot - now);
+    if(cooldownUntil <= Date.now()) return;
+  }
+}
+class QuotaError extends Error {}
 async function gfetch(url, opts={}, attempt=0){
   const tok = getToken();
   if(!tok){ authExpired(); throw new AuthError('Bitte neu anmelden.'); }
+  await throttle();
   let r;
   try{ r = await fetch(url, {...opts, headers: {...(opts.headers||{}), Authorization: 'Bearer ' + tok}}); }
   catch(e){ throw new Error('Keine Verbindung zu Gmail. Bist du online?'); }
   if(r.status === 401){ authExpired(); throw new AuthError('Anmeldung abgelaufen.'); }
-  if((r.status === 429 || r.status >= 500) && attempt < 4){
-    await new Promise(res=>setTimeout(res, 800 * (attempt+1)));
-    return gfetch(url, opts, attempt+1);
+  let errBody = null;
+  if(!r.ok){ try{ errBody = await r.json(); }catch(e){} }
+  const msg = (errBody && errBody.error && errBody.error.message) || '';
+  const quota = r.status === 429 || (r.status === 403 && /quota|rate ?limit/i.test(msg + JSON.stringify(errBody||{})));
+  if(quota){
+    const wait = [4000, 8000, 15000, 30000, 30000, 30000][attempt] || 30000;
+    cooldownUntil = Math.max(cooldownUntil, Date.now() + wait + Math.random()*1500);
+    if(attempt < 6) return gfetch(url, opts, attempt+1);
+    throw new QuotaError('Google bremst gerade, weil sehr viele Mails auf einmal geladen werden. Die App lädt in ein paar Minuten automatisch weiter.');
   }
-  if(!r.ok){
-    let msg = 'Gmail-Fehler ' + r.status;
-    try{ msg = (await r.json()).error.message || msg; }catch(e){}
-    throw new Error(msg);
-  }
+  if(r.status >= 500 && attempt < 4){ await sleep(800 * (attempt+1)); return gfetch(url, opts, attempt+1); }
+  if(!r.ok) throw new Error(msg || ('Gmail-Fehler ' + r.status));
   return r.status === 204 ? {} : r.json();
 }
 async function pool(items, n, fn){
@@ -137,23 +157,32 @@ async function listInboxIds(){
 }
 async function syncInbox(){
   const cache = loadCache();
-  const ids = await listInboxIds();
+  const ids = await listInboxIds();                     // neueste zuerst
   const present = new Set(ids);
   Object.keys(cache.mails).forEach(id=>{ if(!present.has(id)) delete cache.mails[id]; });
   const missing = ids.filter(id=>!cache.mails[id]);
-  (await pool(missing.slice(0, FIRST_BATCH), 8, fetchMeta)).forEach(m=>{ cache.mails[m.uid] = m; });
+  // Mit Zwischenspeicher: nur die wirklich neuen Mails sofort holen, alles andere im Hintergrund
+  const firstCached = ids.findIndex(id=>cache.mails[id]);
+  const now = firstCached < 0 ? missing.slice(0, FIRST_BATCH)
+            : ids.slice(0, firstCached).filter(id=>!cache.mails[id]).slice(0, 60);
+  (await pool(now, 5, fetchMeta)).forEach(m=>{ cache.mails[m.uid] = m; });
   saveCache(true);
   GSYNC.total = ids.length; GSYNC.loaded = Object.keys(cache.mails).length;
-  const rest = missing.slice(FIRST_BATCH);
+  const rest = missing.filter(id=>!cache.mails[id]);
   if(rest.length && !GSYNC.running) backgroundLoad(rest);
 }
-async function backgroundLoad(rest){
+async function backgroundLoad(ids){
+  let rest = ids;
   GSYNC.running = true; GSYNC.error = null;
   try{
-    for(let i = 0; i < rest.length; i += 100){
-      (await pool(rest.slice(i, i+100), 8, fetchMeta)).forEach(m=>{ GCACHE.mails[m.uid] = m; });
-      GSYNC.loaded = Object.keys(GCACHE.mails).length;
-      saveCache();
+    for(let round = 0; round < 3 && rest.length; round++){
+      if(round) await sleep(30000);        // Nachzügler nach einer Pause erneut versuchen
+      for(let i = 0; i < rest.length; i += 100){
+        (await pool(rest.slice(i, i+100), 4, async id=>{ while(fgActive > 0) await sleep(150); return fetchMeta(id); })).forEach(m=>{ GCACHE.mails[m.uid] = m; });
+        GSYNC.loaded = Object.keys(GCACHE.mails).length;
+        saveCache();
+      }
+      rest = rest.filter(id=>!GCACHE.mails[id]);
     }
   }catch(e){ GSYNC.error = e.message; }
   finally{ saveCache(true); GSYNC.running = false; }
@@ -195,7 +224,13 @@ async function getBody(id){
 }
 
 /* ---- dieselben Pfade wie die Mac/Windows-App ---- */
+let fgActive = 0;
 async function api(path, body){
+  const fg = /^\/api\/(body|delete|restore|status)/.test(path);
+  if(fg) fgActive++;
+  try{ return await apiInner(path, body); } finally { if(fg) fgActive--; }
+}
+async function apiInner(path, body){
   const [p, q] = path.split('?');
   const qs = new URLSearchParams(q || '');
   if(p === '/api/status'){
