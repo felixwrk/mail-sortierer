@@ -63,8 +63,8 @@ Account-Menü (oben rechts) → **Regeln bearbeiten**. Dort kannst du Absender u
 | `app/` | Mail-Dienst (`mailsortierer.py`, nur Python-Standardbibliothek) und Oberfläche (`index.html`) |
 | `mac/` | Fenster-Programm für den Mac (Swift/WebKit) |
 | `install/` | Installationsskripte |
-| `.github/workflows/` | Baut bei jedem Tag `v*` automatisch Mac-App und Windows-EXE und veröffentlicht sie |
+| `.github/workflows/` | Baut bei jeder neuen Nummer in `VERSION` automatisch Mac-App und Windows-EXE und veröffentlicht sie |
 
-Neue Version veröffentlichen: `git tag v1.2.0 && git push --tags`
+Neue Version veröffentlichen: Nummer in der Datei `VERSION` erhöhen und auf `main` hochladen – GitHub baut und veröffentlicht dann automatisch.
 
 Selbsttest: `python3 app/mailsortierer.py --selftest`
