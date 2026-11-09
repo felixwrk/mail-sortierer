@@ -147,6 +147,14 @@ main{flex:1;display:flex;min-height:0}
 .mini.danger{color:var(--del-text)}
 .mini.danger:hover{border-color:var(--del);box-shadow:0 0 12px color-mix(in srgb,var(--del) 40%,transparent)}
 .abo-sum{margin:2px 8px 6px;font-size:13px;color:var(--muted)}
+/* Nachladen im Hintergrund */
+.sync{display:flex;align-items:center;gap:8px;padding:6px 12px 6px 9px;border-radius:30px;border:1px solid var(--line);background:var(--surface);font-size:12.5px;font-weight:650;color:var(--muted);white-space:nowrap;box-shadow:var(--shadow);animation:rise .3s var(--ease);font-variant-numeric:tabular-nums}
+.sync .ring{width:14px;height:14px;border-radius:50%;border:2px solid var(--line);border-top-color:var(--accent);animation:spin .8s linear infinite;flex:none}
+.sync.done{border-color:color-mix(in srgb,var(--keep) 45%,transparent)}
+.sync.done .ring{border-color:var(--keep);animation:none;box-shadow:0 0 8px color-mix(in srgb,var(--keep) 60%,transparent)}
+.sync b{color:var(--ink)}
+.more-btn{display:block;margin:14px auto 18px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);font-weight:700;font-size:13.5px;padding:9px 16px;border-radius:12px;transition:border-color .2s, box-shadow .2s}
+.more-btn:hover{border-color:var(--accent);box-shadow:0 0 14px var(--glow)}
 .abo-total{font:800 15px var(--display);color:var(--accent-text);text-shadow:0 0 14px var(--glow);margin-left:2px;font-variant-numeric:tabular-nums}
 .abo{width:100%;border:1px solid transparent;background:none;text-align:left;cursor:pointer}
 .abo:hover{border-color:color-mix(in srgb,var(--cc,var(--accent)) 40%,transparent);box-shadow:0 0 16px color-mix(in srgb,var(--cc,var(--accent)) 16%,transparent)}
@@ -470,6 +478,7 @@ body.no-motion *, body.no-motion *::before, body.no-motion *::after{animation:no
   .hero{min-height:420px}
 }
 @media (max-width:760px){
+  .sync .lbl{display:none}
   .acc-mail{display:none}
   .acc-btn{padding:4px}
   .seg button{padding:7px 10px}
@@ -526,6 +535,7 @@ body.no-motion *, body.no-motion *::before, body.no-motion *::after{animation:no
     <button type="button" data-v="swipe">Sortieren <span class="count" id="segCount">0</span></button>
   </nav>
   <div class="tools">
+    <div class="sync" id="syncPill" hidden><span class="ring"></span><span id="syncTxt"></span></div>
     <button class="icon-btn" id="gearBtn" type="button" aria-label="Einstellungen">
       <svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
     </button>
@@ -903,9 +913,56 @@ async function load(target){
     DATA = await api('/api/mails');
     buildQueue(); renderInbox();
     show(target || 'home');
+    handleSync(DATA.sync);
   }catch(e){
     $('#loadMsg').innerHTML = esc(e.message) + '<br><br><button class="link" type="button" onclick="load(\'home\')">Nochmal versuchen</button>';
   }
+}
+
+/* ---------- Ältere Mails im Hintergrund ---------- */
+let syncTimer = null, syncSeen = 0, syncHideTimer = null;
+function fmtNum(n){ return Number(n||0).toLocaleString('de-DE'); }
+function renderSync(st){
+  const pill = $('#syncPill');
+  clearTimeout(syncHideTimer);
+  if(!st || (!st.running && !pill.dataset.wasRunning)){ pill.hidden = true; return; }
+  pill.hidden = false;
+  if(st.running){
+    pill.dataset.wasRunning = '1';
+    pill.classList.remove('done');
+    const pct = st.total ? Math.floor(st.loaded/st.total*100) : 0;
+    $('#syncTxt').innerHTML = `<span class="lbl">Ältere Mails laden … </span><b>${fmtNum(st.loaded)}</b><span class="lbl"> / ${fmtNum(st.total)} ·</span> <span>${pct} %</span>`;
+  } else {
+    pill.classList.add('done');
+    $('#syncTxt').innerHTML = `<span class="lbl">Alle </span><b>${fmtNum(st.loaded)}</b><span class="lbl"> Mails geladen</span>`;
+    delete pill.dataset.wasRunning;
+    syncHideTimer = setTimeout(()=>{ pill.hidden = true; }, 4000);
+  }
+}
+function handleSync(st){
+  renderSync(st);
+  clearTimeout(syncTimer);
+  if(st && st.running){ syncSeen = st.loaded; syncTimer = setTimeout(pollSync, 2000); }
+}
+async function pollSync(){
+  try{
+    const st = await api('/api/sync');
+    renderSync(st);
+    if(st.loaded - syncSeen >= 150 || !st.running){ syncSeen = st.loaded; await mergeCached(); }
+    if(st.running) syncTimer = setTimeout(pollSync, 2000);
+  }catch(e){ syncTimer = setTimeout(pollSync, 5000); }
+}
+async function mergeCached(){
+  const d = await api('/api/mails?cached=1');
+  const have = new Set(DATA.mails.map(m=>m.uid));
+  let added = 0;
+  for(const m of d.mails){ if(!have.has(m.uid)){ DATA.mails.push(m); added++; } }
+  if(!added) return;
+  DATA.mails.sort((a,b)=>b.ts-a.ts);
+  const inQ = new Set(queue.map(m=>m.uid));
+  for(const m of DATA.mails){ if(inDeck(m) && !inQ.has(m.uid)) queue.push(m); }
+  renderDeck();
+  if(view==='inbox') renderInbox(); else if(view==='home') renderHome();
 }
 
 /* ---------- Startseite ---------- */
@@ -1096,7 +1153,7 @@ const CAT_WORDS = {
   bell:['benachrichtigung','benachrichtigungen','hinweis','hinweise','sicherheit','erinnerung','erinnerungen','info'],
   person:['persönlich','privat','freunde','familie','nachricht','nachrichten'],
 };
-let searchQ = '';
+let searchQ = '', inboxLimit = 200;
 function mailText(m){ return (m.from_name+' '+m.from_addr+' '+m.subject+' '+(m.body||m.snippet)).toLowerCase(); }
 function catMatches(name, q){
   if(!q) return false;
@@ -1132,7 +1189,7 @@ function renderInbox(){
     h += `<button class="cat ${currentCat===c.name?'on':''}" data-c="${esc(c.name)}" type="button" style="--cc:${catInfo(c.name).color}">${catIcon(c.name)}${esc(c.name)}<span class="n">${counts[c.name]||0}</span></button>`;
   });
   $('#side').innerHTML = h;
-  $('#side').querySelectorAll('.cat').forEach(b=>b.onclick=()=>{ currentCat=b.dataset.c; renderInbox(); $('#panel').scrollTop=0; });
+  $('#side').querySelectorAll('.cat').forEach(b=>b.onclick=()=>{ currentCat=b.dataset.c; inboxLimit=200; renderInbox(); $('#panel').scrollTop=0; });
 
   const q = searchQ;
   const list = DATA.mails.filter(m=>(currentCat==='__all' || m.category===currentCat) && mailMatches(m,q)).sort((a,b)=>b.ts-a.ts);
@@ -1152,7 +1209,7 @@ function renderInbox(){
     const perDay = {};
     list.forEach(m=>{ const d=dayLabel(m.ts); perDay[d]=(perDay[d]||0)+1; });
     let last = null, i = 0;
-    for(const m of list){
+    for(const m of list.slice(0, inboxLimit)){
       const d = dayLabel(m.ts);
       if(d!==last){ html += `<div class="day-h${d==='Heute'?' today':''}">${esc(d)}<span class="dn">${perDay[d]} Mail${perDay[d]===1?'':'s'}</span></div>`; last = d; }
       html += `<div class="row" data-uid="${esc(m.uid)}" style="--i:${i++}">
@@ -1163,13 +1220,19 @@ function renderInbox(){
       </div>`;
     }
   }
+  if(list.length > inboxLimit) html += `<button class="more-btn" type="button" id="moreRows">Weitere Mails anzeigen (${fmtNum(list.length - inboxLimit)} übrig)</button>`;
   $('#list').innerHTML = html;
+  const more = $('#moreRows'); if(more) more.onclick = ()=>{ inboxLimit += 200; renderInbox(); };
   $('#list').querySelectorAll('.row').forEach(r=>r.onclick=()=>{ const m = DATA.mails.find(x=>x.uid===r.dataset.uid); if(m) openModal(m, r); });
 }
 $('#inboxSearch').addEventListener('input', e=>{
-  searchQ = e.target.value.trim().toLowerCase();
+  searchQ = e.target.value.trim().toLowerCase(); inboxLimit = 200;
   $('#inboxClear').hidden = !e.target.value;
   renderInbox(); $('#panel').scrollTop = 0;
+});
+$('#panel').addEventListener('scroll', ()=>{
+  const p = $('#panel');
+  if($('#moreRows') && p.scrollTop + p.clientHeight > p.scrollHeight - 400){ inboxLimit += 200; renderInbox(); }
 });
 $('#inboxClear').onclick = ()=>{ $('#inboxSearch').value=''; searchQ=''; $('#inboxClear').hidden=true; renderInbox(); $('#inboxSearch').focus(); };
 

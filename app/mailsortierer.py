@@ -402,29 +402,132 @@ def build_mail(raw):
     }
 
 
-def fetch_mails():
-    rules = load_rules()
+CACHE_FILE = DATA_DIR / "zwischenspeicher.json"
+_cache_lock = threading.Lock()
+_cache = None
+SYNC = {"running": False, "loaded": 0, "total": 0, "error": None}
+FIRST_BATCH = 400          # so viele neueste Mails sofort, der Rest im Hintergrund
+
+
+def get_cache(account):
+    global _cache
+    with _cache_lock:
+        if _cache is None or _cache.get("account") != account:
+            c = read_json(CACHE_FILE, {})
+            _cache = c if c.get("account") == account and isinstance(c.get("mails"), dict) \
+                else {"account": account, "uidvalidity": None, "mails": {}}
+        return _cache
+
+
+def save_cache():
+    with _cache_lock:
+        if _cache is None:
+            return
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        tmp = CACHE_FILE.with_suffix(".tmp")
+        tmp.write_text(json.dumps(_cache, ensure_ascii=False, separators=(",", ":")), "utf-8")
+        os.replace(tmp, CACHE_FILE)
+
+
+def clear_cache():
+    global _cache
+    with _cache_lock:
+        _cache = None
+    try:
+        CACHE_FILE.unlink()
+    except OSError:
+        pass
+
+
+def fetch_batch(conn, uids, is_gmail, text_bytes):
+    items = f"(UID BODY.PEEK[HEADER] BODY.PEEK[TEXT]<0.{text_bytes}>" + (" X-GM-MSGID)" if is_gmail else ")")
+    out = []
+    for i in range(0, len(uids), 80):
+        typ, data = conn.uid("FETCH", ",".join(uids[i:i + 80]), items)
+        for raw in parse_fetch(data or []):
+            if "uid" in raw and raw["header"]:
+                try:
+                    out.append(build_mail(raw))
+                except Exception:
+                    pass
+    return out
+
+
+def sync_inbox():
+    """Neueste Mails sofort holen, alle älteren im Hintergrund nachladen."""
+    account = read_json(CONFIG_FILE, {}).get("email")
     conn = connect()
     try:
         is_gmail = "X-GM-EXT-1" in caps(conn)
         conn.select("INBOX", readonly=True)
+        uv = (conn.response("UIDVALIDITY")[1] or [b""])[0]
+        uv = uv.decode() if isinstance(uv, bytes) else str(uv)
+        cache = get_cache(account)
+        with _cache_lock:
+            if cache.get("uidvalidity") != uv:
+                cache["uidvalidity"], cache["mails"] = uv, {}
         typ, data = conn.uid("SEARCH", None, "ALL")
-        uids = data[0].split()[-MAX_MAILS:]
-        items = "(UID BODY.PEEK[HEADER] BODY.PEEK[TEXT]<0.6000>" + (" X-GM-MSGID)" if is_gmail else ")")
-        mails = []
-        for i in range(0, len(uids), 80):
-            chunk = b",".join(uids[i:i + 80]).decode()
-            typ, data = conn.uid("FETCH", chunk, items)
-            for raw in parse_fetch(data):
-                if "uid" in raw and raw["header"]:
-                    try:
-                        mails.append(build_mail(raw))
-                    except Exception:
-                        pass
+        all_uids = [u.decode() for u in (data[0] or b"").split()]
+        present = set(all_uids)
+        with _cache_lock:
+            for u in [u for u in cache["mails"] if u not in present]:
+                del cache["mails"][u]          # woanders gelöscht oder verschoben
+            missing = sorted((u for u in all_uids if u not in cache["mails"]), key=int, reverse=True)
+        for m in fetch_batch(conn, missing[:FIRST_BATCH], is_gmail, 6000):
+            with _cache_lock:
+                cache["mails"][m["uid"]] = m
     finally:
         logout(conn)
+    save_cache()
+    rest = missing[FIRST_BATCH:]
+    with _cache_lock:
+        SYNC.update(total=len(all_uids), loaded=len(cache["mails"]))
+        start_bg = bool(rest) and not SYNC["running"]
+        if start_bg:
+            SYNC.update(running=True, error=None)
+    if start_bg:
+        threading.Thread(target=background_sync, args=(account, rest), daemon=True).start()
 
+
+def background_sync(account, rest):
+    try:
+        conn = connect()
+        try:
+            is_gmail = "X-GM-EXT-1" in caps(conn)
+            conn.select("INBOX", readonly=True)
+            since_save = 0
+            for i in range(0, len(rest), 200):
+                batch = fetch_batch(conn, rest[i:i + 200], is_gmail, 2000)
+                cache = get_cache(account)
+                with _cache_lock:
+                    for m in batch:
+                        cache["mails"][m["uid"]] = m
+                    SYNC["loaded"] = len(cache["mails"])
+                since_save += len(batch)
+                if since_save >= 1000:
+                    save_cache()
+                    since_save = 0
+        finally:
+            logout(conn)
+    except Exception as e:
+        SYNC["error"] = str(e)
+    finally:
+        save_cache()
+        SYNC["running"] = False
+
+
+def fetch_mails(sync=True):
+    account = read_json(CONFIG_FILE, {}).get("email")
+    if not account:
+        raise MailError("Noch kein Konto eingerichtet.")
+    if sync:
+        sync_inbox()
+    rules = load_rules()
     kept = set(read_json(KEPT_FILE, []))
+    cache = get_cache(account)
+    with _cache_lock:
+        mails = [dict(m) for m in cache["mails"].values()]
+        sync_state = dict(SYNC)
     for m in mails:
         cat = categorize(m, rules)
         m["category"] = cat["name"]
@@ -433,7 +536,7 @@ def fetch_mails():
     mails.sort(key=lambda m: m["ts"], reverse=True)
     cats = [{"name": c["name"], "unwichtig": bool(c.get("unwichtig"))}
             for c in rules["kategorien"] + [rules["rest"]]]
-    return {"mails": mails, "categories": cats}
+    return {"mails": mails, "categories": cats, "sync": sync_state}
 
 
 def get_body(uid):
@@ -473,6 +576,9 @@ def move_to_trash(uid):
         conn.select("INBOX")
         if _move(conn, uid, f'"{trash}"') != "OK":
             raise MailError("Löschen hat nicht geklappt.")
+        with _cache_lock:
+            if _cache:
+                _cache["mails"].pop(str(uid), None)
     finally:
         logout(conn)
 
@@ -656,7 +762,11 @@ class Handler(BaseHTTPRequestHandler):
                 self.send(200, {"configured": ok, "email": cfg.get("email"),
                                 "version": APP_VERSION, "platform": platform})
             elif url.path == "/api/mails":
-                self.send(200, fetch_mails())
+                cached = parse_qs(url.query).get("cached", ["0"])[0] == "1"
+                self.send(200, fetch_mails(sync=not cached))
+            elif url.path == "/api/sync":
+                with _cache_lock:
+                    self.send(200, dict(SYNC))
             elif url.path == "/api/body":
                 uid = parse_qs(url.query).get("uid", [""])[0]
                 self.send(200, {"text": get_body(uid)})
@@ -701,6 +811,7 @@ class Handler(BaseHTTPRequestHandler):
                 if cfg.get("email"):
                     secret_delete(cfg["email"])
                 write_json(CONFIG_FILE, {})
+                clear_cache()
                 self.send(200, {"ok": True})
             elif self.path == "/api/rules":
                 load_rules()
@@ -794,6 +905,16 @@ def selftest():
             ok = False
     load_rules()
     check("Regeln-Datei", RULES_FILE.exists())
+    write_json(CONFIG_FILE, {"email": "selftest@example.com"})
+    c = get_cache("selftest@example.com")
+    c["mails"] = {"7": m, "9": {**m, "uid": "9", "ts": 99}}
+    save_cache()
+    global _cache
+    _cache = None
+    r = fetch_mails(sync=False)
+    check("Zwischenspeicher", [x["uid"] for x in r["mails"]] == ["9", "7"] and r["sync"]["running"] is False)
+    clear_cache()
+    write_json(CONFIG_FILE, {})
     srv = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
     threading.Thread(target=srv.serve_forever, daemon=True).start()
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
