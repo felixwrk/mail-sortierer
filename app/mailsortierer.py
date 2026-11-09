@@ -382,7 +382,11 @@ def build_mail(raw):
         ts = email.utils.parsedate_to_datetime(h("Date")).timestamp()
     except Exception:
         ts = 0
-    bulk = bool(h("List-Unsubscribe")) or h("Precedence").lower() in ("bulk", "list", "junk")
+    lu = h("List-Unsubscribe")
+    bulk = bool(lu) or h("Precedence").lower() in ("bulk", "list", "junk")
+    links = re.findall(r"<([^>]+)>", lu)
+    unsub = next((u for u in links if u.lower().startswith("https://")), None) or \
+        next((u for u in links if u.lower().startswith(("http://", "mailto:"))), None)
     gmid = raw.get("gmid")
     return {
         "uid": raw["uid"],
@@ -394,6 +398,7 @@ def build_mail(raw):
         "bulk": bulk,
         "snippet": extract_snippet(raw["header"], raw["text"]),
         "link": f"https://mail.google.com/mail/u/0/#all/{int(gmid):x}" if gmid else None,
+        "unsub": unsub,
     }
 
 
@@ -775,6 +780,7 @@ def selftest():
     m = build_mail(parse_fetch(data)[0])
     check("Mail lesen", m["uid"] == "7" and m["subject"] == "50% Rabatt" and m["snippet"] == "Hallo")
     check("Kategorie erkennen", categorize(m, DEFAULT_RULES)["name"] == "Newsletter & Werbung")
+    check("Abmeldelink erkennen", m["unsub"] == "mailto:u@x" and m["bulk"])
     check("Versionen vergleichen", vtuple("1.10.0") > vtuple("1.9.3") > vtuple("0.0.0-dev"))
     check("HTML zu Text", "Zeile 2" in html_to_text("<p>Zeile 1</p><p>Zeile 2</p>", True))
     try:

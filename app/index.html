@@ -86,6 +86,68 @@ main{flex:1;display:flex;min-height:0}
 
 /* ---------- Startseite ---------- */
 .home{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:20px;padding-block:4px 20px;overflow:auto}
+.side-col{display:flex;flex-direction:column;gap:16px;min-height:0}
+.side-col .news{flex:1 1 0;min-height:230px}
+
+/* Brief auf der Startseite */
+.letter-scene{display:flex;flex-direction:column;align-items:center;gap:14px;perspective:1100px}
+.envelope{position:relative;width:min(430px,80vw);aspect-ratio:16/10;filter:drop-shadow(0 0 1px color-mix(in srgb,var(--accent) 70%,transparent)) drop-shadow(0 18px 40px rgba(0,0,0,.35)) drop-shadow(0 0 34px var(--glow));animation:envFloat 6s ease-in-out infinite;transform-origin:50% 40%}
+.hl-in{position:absolute;inset:0;border-radius:18px;background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 34%,var(--surface)),color-mix(in srgb,var(--accent-2) 22%,var(--surface)))}
+.hl-paper{position:absolute;left:6%;right:6%;top:7%;height:86%;z-index:2;border-radius:12px;background:#fbfbfd;color:#1a1d26;padding:9% 8% 0;display:flex;flex-direction:column;gap:9px;text-align:left;box-shadow:0 4px 16px rgba(0,0,0,.18)}
+.hl-paper b{font:800 clamp(15px,2.4vw,20px) var(--display);letter-spacing:-.01em}
+.hl-paper span{font-size:13px;color:#5b6272}
+.hl-paper i{display:block;height:7px;border-radius:4px;background:#e3e6ee}
+.hl-paper i:nth-of-type(2){width:80%} .hl-paper i:nth-of-type(3){width:60%}
+.hl-front{position:absolute;inset:0;z-index:3;border-radius:18px;background:linear-gradient(165deg,color-mix(in srgb,var(--accent) 12%,var(--surface-2)),var(--surface) 75%);clip-path:polygon(0 0,50% 50%,100% 0,100% 100%,0 100%)}
+.hl-flap{position:absolute;left:0;right:0;top:0;height:58%;z-index:4;border-radius:18px 18px 0 0;background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 22%,var(--surface-2)),color-mix(in srgb,var(--accent) 10%,var(--surface)));clip-path:polygon(0 0,100% 0,50% 100%);transform-origin:50% 0}
+.hl-addr{position:absolute;z-index:5;left:9%;bottom:12%;text-align:left;display:flex;flex-direction:column;gap:2px}
+.hl-addr small{font:700 10.5px var(--display);text-transform:uppercase;letter-spacing:.14em;color:var(--muted)}
+.hl-addr b{font:800 clamp(18px,3vw,24px) var(--display);letter-spacing:-.02em}
+.hl-addr span{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.hl-addr .ul{width:150px;height:2px;margin-top:6px;border-radius:2px;background:linear-gradient(90deg,var(--accent),transparent);box-shadow:0 0 10px var(--glow)}
+.postmark{position:absolute;z-index:5;right:27%;top:9%;width:92px;height:62px;color:var(--muted);opacity:.55;pointer-events:none}
+.postmark svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:1.6}
+.postmark text{fill:currentColor;stroke:none;font:800 9px var(--display);letter-spacing:.12em}
+.stamp{position:absolute;z-index:6;right:6%;top:8%;width:86px;height:104px;border:0;padding:6px;cursor:pointer;transform:rotate(5deg);
+  background:radial-gradient(circle,transparent 3px,#fbfbfd 3.6px) -5px -5px/10px 10px;filter:drop-shadow(0 4px 10px rgba(0,0,0,.3));transition:transform .25s var(--ease)}
+.stamp-in{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;width:100%;height:100%;border-radius:2px;color:var(--accent-ink);background:linear-gradient(160deg,var(--accent),var(--accent-2));box-shadow:inset 0 0 0 2px rgba(255,255,255,.55)}
+.stamp-in svg{width:20px;height:20px}
+.stamp-in b{font:800 26px/1 var(--display);font-variant-numeric:tabular-nums}
+.stamp-in small{font:700 9.5px var(--display);text-transform:uppercase;letter-spacing:.1em;opacity:.9}
+.stamp::after{content:"";position:absolute;inset:-8px;border-radius:8px;border:2px solid var(--accent);opacity:0;animation:stampPing 2.4s ease-out infinite}
+.stamp:hover{transform:rotate(-3deg) scale(1.08)}
+.stamp:active{transform:rotate(0) scale(.96)}
+.stamp-hint{margin:0;color:var(--muted);font-size:13px;display:flex;align-items:center;gap:6px}
+.stamp-hint svg{width:15px;height:15px;color:var(--accent-text);animation:nudge 1.6s ease-in-out infinite}
+.letter-scene.opening .envelope{animation:envZoom 1.15s cubic-bezier(.6,0,.4,1) forwards}
+.letter-scene.opening .stamp{animation:stampOff .32s ease-in forwards}
+.letter-scene.opening .stamp::after{animation:none;opacity:0}
+.letter-scene.opening .hl-flap{animation:flapOpen .42s .22s var(--ease) forwards}
+.letter-scene.opening .hl-paper{animation:paperUp .45s .5s var(--ease) forwards}
+.letter-scene.opening .hl-addr,.letter-scene.opening .postmark{animation:fadeOut .3s .15s forwards}
+.letter-scene.opening .stamp-hint{opacity:0;transition:opacity .2s}
+@keyframes envFloat{0%,100%{transform:translateY(0) rotate(-.6deg)}50%{transform:translateY(-8px) rotate(.6deg)}}
+@keyframes stampPing{0%{opacity:.7;transform:scale(.92)}70%,100%{opacity:0;transform:scale(1.18)}}
+@keyframes nudge{0%,100%{transform:translateX(0)}50%{transform:translateX(4px)}}
+@keyframes stampOff{to{transform:rotate(30deg) translate(40px,-60px) scale(.6);opacity:0}}
+@keyframes flapOpen{0%{transform:rotateX(0);z-index:4}50%{z-index:1}100%{transform:rotateX(180deg);z-index:1}}
+@keyframes paperUp{to{transform:translateY(-42%)}}
+@keyframes fadeOut{to{opacity:0}}
+@keyframes envZoom{0%,72%{transform:none;opacity:1}100%{transform:translateY(-10%) scale(3.2);opacity:0}}
+
+/* Abo-Übersicht */
+.abo{display:flex;align-items:center;gap:10px;padding:9px 8px;border-radius:13px;animation:slideIn .45s var(--ease) both;animation-delay:calc(var(--i,0)*60ms + .3s);transition:background .2s}
+.abo:hover{background:var(--surface-2)}
+.abo .av{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font:800 13px var(--display);color:#fff;flex:none}
+.abo .txt{flex:1;min-width:0}
+.abo .txt b{display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.abo .txt small{color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
+.mini{border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:12px;font-weight:700;padding:5px 9px;border-radius:9px;text-decoration:none;white-space:nowrap;transition:border-color .2s, box-shadow .2s}
+.mini:hover{border-color:var(--accent);box-shadow:0 0 12px var(--glow)}
+.mini.danger{color:var(--del-text)}
+.mini.danger:hover{border-color:var(--del);box-shadow:0 0 12px color-mix(in srgb,var(--del) 40%,transparent)}
+.abo-sum{margin:2px 8px 6px;font-size:13px;color:var(--muted)}
+.abo-sum b{color:var(--ink)}
 .hero{position:relative;overflow:hidden;border-radius:26px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:26px;padding:36px 20px;min-height:460px;border:1px solid var(--line);background:radial-gradient(120% 90% at 50% 0%, color-mix(in srgb,var(--surface) 70%,transparent), transparent), var(--surface)}
 .hero > *{position:relative;z-index:1}
 .orb{position:absolute !important;z-index:0 !important;border-radius:50%;filter:blur(60px);opacity:var(--orb);pointer-events:none}
@@ -209,6 +271,8 @@ mark{background:color-mix(in srgb,var(--accent) 32%,transparent);color:inherit;b
 .card{position:absolute;inset:0;background:var(--surface);border:1px solid var(--line);border-radius:26px;box-shadow:var(--shadow-lg);padding:26px;display:flex;flex-direction:column;gap:12px;touch-action:none;transition:transform .35s var(--ease), opacity .35s ease, box-shadow .2s;cursor:grab}
 .card.front{animation:pop .4s var(--ease);box-shadow:var(--shadow-lg), 0 0 0 1px color-mix(in srgb,var(--cc) 30%,transparent), 0 0 40px color-mix(in srgb,var(--cc) 14%,transparent)}
 .card:active{cursor:grabbing}
+.card .open-hint{position:absolute;right:22px;top:26px;font-size:12px;color:var(--muted);display:flex;align-items:center;gap:5px;opacity:.75}
+.card .open-hint svg{width:13px;height:13px}
 .card.back{transform:scale(.94) translateY(18px);opacity:.55;transition:none}
 .tag{align-self:flex-start;display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;background:var(--surface-2);padding:3px 12px 3px 3px;border-radius:20px}
 .card .sender{display:flex;align-items:center;gap:12px}
@@ -504,18 +568,33 @@ body.no-motion *, body.no-motion *::before, body.no-motion *::after{animation:no
         <p class="greet" id="greet">Hallo</p>
         <h1 id="homeTitle">Dein Posteingang</h1>
       </div>
-      <button class="go" id="goBtn" type="button">
-        <svg class="i" viewBox="0 0 24 24"><path d="M3 13h5l1.5 3h5L16 13h5"/><path d="M5.5 5h13L21 13v6H3v-6z"/></svg>
-        <b>Posteingang</b>
-        <small id="goSub">öffnen</small>
-      </button>
+      <div class="letter-scene" id="letterScene">
+        <div class="envelope">
+          <div class="hl-in"></div>
+          <div class="hl-paper"><b id="paperTitle">Dein Posteingang</b><span id="paperSub">sortiert nach Kategorien</span><i></i><i></i><i></i></div>
+          <div class="hl-front"></div>
+          <div class="hl-flap"></div>
+          <div class="hl-addr"><small>An</small><b id="envTo">Dich</b><span id="envSub">–</span><span class="ul"></span></div>
+          <div class="postmark"><svg viewBox="0 0 92 62"><circle cx="31" cy="31" r="24"/><circle cx="31" cy="31" r="19"/><text x="31" y="29" text-anchor="middle" id="pmDay">HEUTE</text><text x="31" y="40" text-anchor="middle" id="pmDate"></text><path d="M58 18c6-4 10 4 16 0s10 4 16 0M58 31c6-4 10 4 16 0s10 4 16 0M58 44c6-4 10 4 16 0s10 4 16 0"/></svg></div>
+          <button class="stamp" id="stampBtn" type="button" aria-label="Brief öffnen und zum Posteingang">
+            <span class="stamp-in"><svg class="i" viewBox="0 0 24 24"><path d="M3 13h5l1.5 3h5L16 13h5"/><path d="M5.5 5h13L21 13v6H3v-6z"/></svg><b id="stampCount">0</b><small>Mails</small></span>
+          </button>
+        </div>
+        <p class="stamp-hint">Auf die Briefmarke tippen, um den Brief zu öffnen <svg class="i" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></p>
+      </div>
       <div class="chips" id="chips"></div>
       <button class="link" id="toSwipe" type="button"><span id="toSwipeTxt">Direkt sortieren</span> <svg class="i" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></button>
     </div>
-    <aside class="news" aria-label="Was ist neu">
-      <div class="news-head"><span class="live"></span><h2>Was ist neu</h2><span>kurz zusammengefasst</span></div>
-      <div class="news-body" id="newsBody"></div>
-    </aside>
+    <div class="side-col">
+      <aside class="news" aria-label="Was ist neu">
+        <div class="news-head"><span class="live"></span><h2>Was ist neu</h2><span>kurz zusammengefasst</span></div>
+        <div class="news-body" id="newsBody"></div>
+      </aside>
+      <aside class="news" aria-label="Deine Abos">
+        <div class="news-head"><span class="ci sm" style="--cc:#a879ff"><svg class="i" viewBox="0 0 24 24"><path d="M4 4h16v4H4z"/><path d="M4 12h10M4 16h7M4 20h12"/></svg></span><h2>Deine Abos</h2><span id="aboCount"></span></div>
+        <div class="news-body" id="aboBody"></div>
+      </aside>
+    </div>
   </section>
 
   <section class="view inbox" id="v-inbox" hidden>
@@ -829,7 +908,15 @@ function renderHome(){
   $('#greet').textContent = (h<11?'Guten Morgen':h<18?'Hallo':'Guten Abend') + nice;
   const n = queue.length;
   $('#homeTitle').innerHTML = n ? `<em>${n}</em> Mail${n===1?'':'s'} warten aufs Sortieren` : 'Alles sortiert';
-  $('#goSub').textContent = `${DATA.mails.length} Mails`;
+  const first = name && name.length>1 ? name[0].toUpperCase()+name.slice(1) : 'Dich';
+  $('#envTo').textContent = first;
+  const today = DATA.mails.filter(m=>dayKey(m.ts)==='Heute').length;
+  $('#envSub').textContent = `${today} neue heute · ${DATA.mails.length} im Posteingang`;
+  $('#stampCount').textContent = DATA.mails.length;
+  $('#paperTitle').textContent = `${DATA.mails.length} Mails für dich`;
+  $('#paperSub').textContent = 'sortiert nach Kategorien und Datum';
+  $('#pmDate').textContent = new Date().toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'2-digit'});
+  renderAbos();
   $('#toSwipeTxt').textContent = n ? `Direkt sortieren (${n} Karten)` : 'Zum Sortieren';
   const counts = {};
   DATA.mails.forEach(m=>counts[m.category]=(counts[m.category]||0)+1);
@@ -845,9 +932,11 @@ function renderHome(){
 function summarize(m){
   const raw = m.subject+' '+m.snippet, t = raw.toLowerCase(), s = `<b>${esc(m.from_name)}</b>`;
   const amount = raw.match(/\d{1,6}(?:\.\d{3})*,\d{2}\s?€/);
-  const code = raw.match(/\bcode\s*:?\s*([A-Z0-9]{4,})\b/i);
+  const code = raw.match(/code\s*(?:lautet|ist)?\s*:?\s*([A-Z0-9]{4,})\b/i);
   const cat = (m.category||'').toLowerCase();
-  if(code && /rabatt|gutschein|code|%/.test(t)) return {icon:'tag', color:'#ff4fd8', text:`${s} hat dir einen Rabattcode geschickt: <code>${esc(code[1])}</code>`};
+  const securityish = /bestätigungscode|sicherheitscode|verifizierungscode|bestätigungs|verification|security code|einmalcode|einmal-code|anmeldecode|2-schritt|zwei-faktor|login|anmeldung|anmelden|passwort|sicherheit|verifizier|konto bestätigen/.test(t);
+  if(code && securityish) return {icon:'shield', color:'#35d6ff', text:`Bestätigungscode von ${s}`};
+  if(code && /rabatt|gutschein|%|spar|discount|coupon|aktionscode|promo/.test(t)) return {icon:'tag', color:'#ff4fd8', text:`${s} hat dir einen Rabattcode geschickt: <code>${esc(code[1])}</code>`};
   if(/kommt heute|wird heute|heute zugestellt/.test(t)) return {icon:'pack', color:'#ffae2e', text:`Dein Paket von ${s} kommt heute`};
   if(/versandt|versendet|unterwegs|sendung/.test(t)) return {icon:'pack', color:'#ffae2e', text:`${s}: Dein Paket ist unterwegs`};
   if(/bestellung|order/.test(t) && cat.includes('bestell')) return {icon:'pack', color:'#ffae2e', text:`Bestellung bei ${s} ist eingegangen`};
@@ -904,7 +993,53 @@ function openMail(uid){
     openModal(m, row);
   });
 }
-$('#goBtn').onclick = ()=>go('inbox', ()=>{ currentCat='__all'; renderInbox(); });
+let letterOpening = false;
+function openLetter(){
+  if(letterOpening || txRunning) return;
+  const toInbox = ()=>{ currentCat='__all'; renderInbox(); show('inbox'); };
+  if(!motionOn()){ toInbox(); return; }
+  letterOpening = true;
+  const sc = $('#letterScene');
+  sc.classList.add('opening');
+  setTimeout(toInbox, 1080);
+  setTimeout(()=>{ sc.classList.remove('opening'); letterOpening = false; }, 1500);
+}
+$('#stampBtn').onclick = openLetter;
+
+/* Abos: Absender mit Abmeldelink bzw. Newsletter, zusammengefasst */
+function renderAbos(){
+  const map = new Map(), now = Date.now()/1000;
+  for(const m of DATA.mails){
+    const cat = (m.category||'').toLowerCase();
+    if(!(m.bulk || cat.includes('newsletter') || cat.includes('sozial'))) continue;
+    if(!map.has(m.from_name)) map.set(m.from_name, {name:m.from_name, addr:m.from_addr, n:0, n30:0, last:0, unsub:null, cat:m.category});
+    const a = map.get(m.from_name);
+    a.n++; if(now - m.ts < 30*86400) a.n30++;
+    if(m.ts > a.last) a.last = m.ts;
+    if(m.unsub && !a.unsub) a.unsub = m.unsub;
+  }
+  const abos = [...map.values()].sort((a,b)=>b.n-a.n || b.last-a.last);
+  const total = abos.reduce((x,a)=>x+a.n30,0);
+  $('#aboCount').textContent = abos.length ? `${abos.length} Absender` : '';
+  const body = $('#aboBody');
+  if(!abos.length){ body.innerHTML = '<div class="news-empty">Keine Newsletter oder Abos gefunden.</div>'; return; }
+  let html = `<div class="abo-sum"><b>${total} Mails</b> im letzten Monat kamen von Abos und Newslettern.</div>`;
+  abos.forEach((a,i)=>{
+    const freq = a.n30 >= 2 ? `${a.n30}× in 30 Tagen` : 'selten';
+    const unsub = !a.unsub ? '' : IS_DEMO
+      ? `<button class="mini danger" type="button" data-demo-unsub="${esc(a.name)}">Abmelden</button>`
+      : `<a class="mini danger" href="${esc(a.unsub)}" target="_blank" rel="noopener">Abmelden</a>`;
+    html += `<div class="abo" style="--i:${i}"><div class="av" style="background:${avColor(a.addr)}">${esc(initial(a.name))}</div>
+      <div class="txt"><b>${esc(a.name)}</b><small>${freq} · zuletzt ${fmtDate(a.last)}</small></div>
+      <button class="mini" type="button" data-show="${esc(a.name)}">Mails</button>${unsub}</div>`;
+  });
+  body.innerHTML = html;
+  body.querySelectorAll('[data-show]').forEach(b=>b.onclick=()=>{
+    const n = b.dataset.show;
+    go('inbox', ()=>{ currentCat='__all'; $('#inboxSearch').value=n; searchQ=n.toLowerCase(); $('#inboxClear').hidden=false; renderInbox(); });
+  });
+  body.querySelectorAll('[data-demo-unsub]').forEach(b=>b.onclick=()=>toast(`In der echten App öffnet sich jetzt die Abmeldeseite von ${b.dataset.demoUnsub}.`));
+}
 $('#toSwipe').onclick = ()=>go('swipe');
 $('#brand').onclick = ()=>{ if(account) go('home'); };
 
@@ -1002,7 +1137,7 @@ function morphTarget(modal, fromEl){
   const end = modal.getBoundingClientRect(), r = fromEl.getBoundingClientRect();
   return `translate(${r.left-end.left}px,${r.top-end.top}px) scale(${r.width/end.width},${r.height/end.height})`;
 }
-function openModal(m, fromEl){
+function openModal(m, fromEl, deckMode){
   modalMail = m; modalFrom = fromEl || null;
   const modal = $('#mailModal');
   modal.style.setProperty('--cc', catInfo(m.category).color);
@@ -1017,10 +1152,16 @@ function openModal(m, fromEl){
     <div class="mm-foot">
       <button class="btn danger" type="button" data-a="del">${svg('trash')}Löschen</button>
       ${m.link ? `<a class="btn" href="${esc(m.link)}" target="_blank" rel="noopener">${svg('ext')}In Gmail öffnen</a>` : ''}
-      <button class="btn primary" type="button" data-a="close">Schließen</button>
+      ${deckMode ? `<button class="btn primary" type="button" data-a="keep">${svg('check')}Behalten</button>` : `<button class="btn primary" type="button" data-a="close">Schließen</button>`}
     </div></div>`;
   modal.querySelectorAll('[data-a="close"]').forEach(b=>b.onclick=closeModal);
-  modal.querySelector('[data-a="del"]').onclick = deleteFromModal;
+  if(deckMode){
+    const decideAfter = a=>{ closeModal(); setTimeout(()=>decide(a), motionOn() ? 400 : 0); };
+    modal.querySelector('[data-a="del"]').onclick = ()=>decideAfter('delete');
+    modal.querySelector('[data-a="keep"]').onclick = ()=>decideAfter('keep');
+  } else {
+    modal.querySelector('[data-a="del"]').onclick = deleteFromModal;
+  }
   modal.style.transition='none'; modal.style.transform=''; modal.style.opacity=''; modal.classList.remove('pop','morph');
   $('#mwrap').hidden = false;
   $('#mscrim').classList.add('open');
@@ -1158,6 +1299,7 @@ function cardHTML(m, cls){
     <div class="subj">${esc(m.subject)}</div>
     <div class="snip">${esc(m.snippet)}</div>
     <div class="meta"><span>${fmtDate(m.ts)}</span>${m.link?`<a href="${esc(m.link)}" target="_blank" rel="noopener">In Gmail öffnen ↗</a>`:''}</div>
+    <span class="open-hint">${svg('ext')}antippen zum Lesen</span>
   </div>`;
 }
 function renderDeck(){
@@ -1179,9 +1321,9 @@ function renderDeck(){
   // die nächsten Karten liegen schon fertig im Stapel
   const html = (queue[2] ? cardHTML(queue[2],'back2') : '') + (queue[1] ? cardHTML(queue[1],'back') : '') + cardHTML(queue[0],'front');
   deck.insertAdjacentHTML('afterbegin', html);
-  enableDrag(deck.querySelector('.card.front:not(.leaving)'));
+  enableDrag(deck.querySelector('.card.front:not(.leaving)'), queue[0]);
 }
-function enableDrag(card){
+function enableDrag(card, mail){
   if(!card) return;
   let x0=null, dx=0;
   const vDel=card.querySelector('.verdict.del'), vKeep=card.querySelector('.verdict.keep');
@@ -1194,8 +1336,13 @@ function enableDrag(card){
     const c = dx<0 ? 'var(--del)' : 'var(--keep)', a = Math.min(70, Math.abs(dx)/2.5);
     card.style.boxShadow = `var(--shadow-lg), 0 0 ${a}px color-mix(in srgb, ${c} 55%, transparent)`;
   });
-  const end=()=>{
+  const end=(e)=>{
     if(x0===null) return; x0=null;
+    if(e.type==='pointerup' && Math.abs(dx) < 6){
+      card.style.transform=''; card.style.boxShadow=''; vDel.style.opacity=vKeep.style.opacity=0;
+      if(mail && !e.target.closest('a')) openModal(mail, card, true);
+      return;
+    }
     if(dx<-110) decide('delete');
     else if(dx>110) decide('keep');
     else { card.style.transition='transform .35s var(--ease), box-shadow .3s'; card.style.transform=''; card.style.boxShadow=''; vDel.style.opacity=vKeep.style.opacity=0; }
