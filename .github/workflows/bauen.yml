@@ -1,0 +1,131 @@
+name: Bauen und veröffentlichen
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    name: Selbsttest (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-14, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        if: runner.os != 'macOS'
+        with:
+          python-version: "3.12"
+      - name: Selbsttest
+        run: python3 app/mailsortierer.py --selftest || python app/mailsortierer.py --selftest
+        shell: bash
+
+  mac:
+    name: Mac-App bauen
+    needs: test
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Version setzen
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then VER="${GITHUB_REF_NAME#v}"; else VER="0.0.0-dev"; fi
+          echo "VER=$VER" >> "$GITHUB_ENV"
+          sed -i '' "s|^APP_VERSION = .*|APP_VERSION = \"$VER\"|; s|^GITHUB_REPO = .*|GITHUB_REPO = \"$GITHUB_REPOSITORY\"|" app/mailsortierer.py
+          grep -n "^APP_VERSION\|^GITHUB_REPO" app/mailsortierer.py
+      - name: App zusammenbauen (Apple Silicon + Intel)
+        run: |
+          set -e
+          APP="build/Mail-Sortierer.app"
+          mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+          swiftc -O -target arm64-apple-macos11  mac/main.swift -o build/arm64  -framework Cocoa -framework WebKit
+          swiftc -O -target x86_64-apple-macos11 mac/main.swift -o build/x86_64 -framework Cocoa -framework WebKit
+          lipo -create build/arm64 build/x86_64 -output "$APP/Contents/MacOS/Mail-Sortierer"
+          lipo -info "$APP/Contents/MacOS/Mail-Sortierer"
+          cp app/mailsortierer.py app/index.html "$APP/Contents/Resources/"
+          cp mac/Info.plist "$APP/Contents/"
+          SHORT="${VER%%-*}"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $SHORT" -c "Set :CFBundleVersion $SHORT" "$APP/Contents/Info.plist"
+          ICONSET=build/AppIcon.iconset; mkdir -p "$ICONSET"
+          for s in 16 32 128 256 512; do
+            sips -z $s $s assets/icon.png --out "$ICONSET/icon_${s}x${s}.png" >/dev/null
+            sips -z $((s*2)) $((s*2)) assets/icon.png --out "$ICONSET/icon_${s}x${s}@2x.png" >/dev/null
+          done
+          iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/AppIcon.icns"
+          codesign --force --deep -s - "$APP"
+          (cd build && ditto -c -k --keepParent Mail-Sortierer.app ../Mail-Sortierer-mac.zip)
+          ls -la Mail-Sortierer-mac.zip
+      - name: Probestart der App
+        continue-on-error: true
+        run: |
+          build/Mail-Sortierer.app/Contents/MacOS/Mail-Sortierer & PID=$!
+          for i in $(seq 1 40); do curl -sf http://127.0.0.1:8765/api/status && break; sleep 0.5; done
+          echo
+          curl -sf http://127.0.0.1:8765/api/status | grep -q "\"version\": \"$VER\""
+          kill $PID || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mac
+          path: Mail-Sortierer-mac.zip
+
+  windows:
+    name: Windows-App bauen
+    needs: test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Version setzen
+        shell: pwsh
+        run: |
+          $ver = if ($env:GITHUB_REF -like 'refs/tags/v*') { $env:GITHUB_REF_NAME.Substring(1) } else { '0.0.0-dev' }
+          "VER=$ver" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          $f = Resolve-Path 'app/mailsortierer.py'
+          $c = [IO.File]::ReadAllText($f)
+          $c = $c -replace '(?m)^APP_VERSION = .*$', ('APP_VERSION = "' + $ver + '"')
+          $c = $c -replace '(?m)^GITHUB_REPO = .*$', ('GITHUB_REPO = "' + $env:GITHUB_REPOSITORY + '"')
+          [IO.File]::WriteAllText($f, $c, (New-Object Text.UTF8Encoding $false))
+          Select-String -Path $f -Pattern '^APP_VERSION|^GITHUB_REPO'
+      - name: EXE bauen
+        run: |
+          pip install pyinstaller==6.11.1
+          pyinstaller --onefile --noconsole --name MailSortierer-Windows --icon assets/icon.ico --add-data "app/index.html;." app/mailsortierer.py
+      - name: Selbsttest der EXE
+        shell: pwsh
+        run: |
+          $p = Start-Process dist/MailSortierer-Windows.exe -ArgumentList '--selftest' -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "Selbsttest der EXE fehlgeschlagen (Code $($p.ExitCode))" }
+          Get-Item dist/MailSortierer-Windows.exe | Select-Object Name, Length
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: dist/MailSortierer-Windows.exe
+
+  release:
+    name: Version veröffentlichen
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [mac, windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Installer dazulegen
+        run: |
+          cp install/Mail-Sortierer-installieren-Mac.command dist/
+          cp install/Mail-Sortierer-installieren-Windows.cmd dist/
+          ls -la dist
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
