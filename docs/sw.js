@@ -1,5 +1,5 @@
 // Mail-Sortierer: App-Hülle offline verfügbar halten, immer zuerst die neueste Version laden
-const CACHE = 'mail-sortierer-v1';
+const CACHE = 'mail-sortierer-v2';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './apple-touch-icon.png'];
 self.addEventListener('install', e => { self.skipWaiting(); e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL))); });
 self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));

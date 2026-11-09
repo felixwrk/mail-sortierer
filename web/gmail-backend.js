@@ -1,7 +1,7 @@
 /*API*/
 /* ===== Gmail-Anbindung direkt im Browser (keine Server, keine Kosten) =====
    Ersetzt die Demo-Daten: dieselben api()-Pfade wie die Mac/Windows-App, aber über die Gmail-Schnittstelle. */
-const BUILTIN_CLIENT_ID = '';            // nach der Einrichtung fest eingetragen; sonst aus dem Einrichtungs-Bildschirm
+const BUILTIN_CLIENT_ID = '544129934675-180k6p2vvlkqqgq9hoqbi242643dg2fi.apps.googleusercontent.com';
 const GMAIL = 'https://gmail.googleapis.com/gmail/v1/users/me';
 const SCOPE = 'https://www.googleapis.com/auth/gmail.modify';
 const FIRST_BATCH = 150;
