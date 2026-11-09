@@ -2,6 +2,7 @@
 """Baut die iPhone-Web-App (docs/index.html) aus der iPhone-Oberfläche + Gmail-Anbindung."""
 import sys, re
 src, backend, out = sys.argv[1], sys.argv[2], sys.argv[3]
+FIX_JS = "<script>\n/* iOS-Home-Bildschirm-App: Safari meldet die Höhe ohne Statusleiste, dadurch endete die App über dem unteren Rand */\n(function(){\n  function fit(){\n    var ph = document.getElementById('phone'); if(!ph) return;\n    var st = window.navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);\n    var portrait = window.innerHeight >= window.innerWidth;\n    var full = portrait ? Math.max(screen.width, screen.height) : Math.min(screen.width, screen.height);\n    if(st && full > window.innerHeight + 1){ ph.style.bottom = 'auto'; ph.style.height = full + 'px'; }\n    else { ph.style.removeProperty('bottom'); ph.style.removeProperty('height'); }\n  }\n  fit();\n  window.addEventListener('resize', fit);\n  window.addEventListener('orientationchange', function(){ setTimeout(fit, 300); });\n  window.addEventListener('pageshow', fit);\n})();\n</script>\n"
 s = open(src, encoding='utf-8').read()
 def rep(old, new, count=1):
     global s
@@ -47,7 +48,7 @@ rep('</style>\n', '''html,body{height:100%;margin:0}
 </head>
 <body>
 ''')
-s = s.rstrip() + '\n</body>\n</html>\n'
+s = s.rstrip() + '\n' + FIX_JS + '</body>\n</html>\n'
 
 # Demo-Hinweise raus
 rep(' (In dieser Demo wird die Anmeldung nur simuliert.)', '')

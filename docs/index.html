@@ -1926,5 +1926,22 @@ boot();
 addEventListener('hashchange', ()=>{ if(/access_token=|error=/.test(location.hash)) boot(); });
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
+<script>
+/* iOS-Home-Bildschirm-App: Safari meldet die Höhe ohne Statusleiste, dadurch endete die App über dem unteren Rand */
+(function(){
+  function fit(){
+    var ph = document.getElementById('phone'); if(!ph) return;
+    var st = window.navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
+    var portrait = window.innerHeight >= window.innerWidth;
+    var full = portrait ? Math.max(screen.width, screen.height) : Math.min(screen.width, screen.height);
+    if(st && full > window.innerHeight + 1){ ph.style.bottom = 'auto'; ph.style.height = full + 'px'; }
+    else { ph.style.removeProperty('bottom'); ph.style.removeProperty('height'); }
+  }
+  fit();
+  window.addEventListener('resize', fit);
+  window.addEventListener('orientationchange', function(){ setTimeout(fit, 300); });
+  window.addEventListener('pageshow', fit);
+})();
+</script>
 </body>
 </html>
