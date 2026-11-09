@@ -17,10 +17,10 @@ Ein kostenloses Programm für **Mac und Windows**, das deine Gmail-Mails nach Ka
 **Variante A – ohne Sicherheitswarnung (empfohlen):** Terminal öffnen (⌘ + Leertaste, „Terminal“) und einfügen:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/__REPO__/main/install/mac.sh | bash
+curl -fsSL https://raw.githubusercontent.com/felixwrk/mail-sortierer/main/install/mac.sh | bash
 ```
 
-**Variante B – zum Doppelklicken:** Unter [Releases](https://github.com/__REPO__/releases/latest) die Datei `Mail-Sortierer-installieren-Mac.command` laden, dann **Rechtsklick → Öffnen**.
+**Variante B – zum Doppelklicken:** Unter [Releases](https://github.com/felixwrk/mail-sortierer/releases/latest) die Datei `Mail-Sortierer-installieren-Mac.command` laden, dann **Rechtsklick → Öffnen**.
 
 Beim allerersten Mal fragt der Mac evtl. nach den kostenlosen *Apple-Entwicklerwerkzeugen* (für Python). Auf „Installieren“ klicken und die Installation danach nochmal starten.
 
@@ -29,10 +29,10 @@ Beim allerersten Mal fragt der Mac evtl. nach den kostenlosen *Apple-Entwicklerw
 **Variante A – ohne Sicherheitswarnung (empfohlen):** Startmenü → „PowerShell“ öffnen und einfügen:
 
 ```powershell
-irm https://raw.githubusercontent.com/__REPO__/main/install/windows.ps1 | iex
+irm https://raw.githubusercontent.com/felixwrk/mail-sortierer/main/install/windows.ps1 | iex
 ```
 
-**Variante B – zum Doppelklicken:** Unter [Releases](https://github.com/__REPO__/releases/latest) die Datei `Mail-Sortierer-installieren-Windows.cmd` laden und öffnen. Falls Windows warnt: „Weitere Informationen“ → „Trotzdem ausführen“.
+**Variante B – zum Doppelklicken:** Unter [Releases](https://github.com/felixwrk/mail-sortierer/releases/latest) die Datei `Mail-Sortierer-installieren-Windows.cmd` laden und öffnen. Falls Windows warnt: „Weitere Informationen“ → „Trotzdem ausführen“.
 
 Der Mail-Sortierer landet im Startmenü und auf dem Desktop und öffnet sich in einem eigenen Fenster.
 

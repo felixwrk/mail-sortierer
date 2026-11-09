@@ -1,7 +1,7 @@
 # Mail-Sortierer für Windows installieren oder aktualisieren.
-# Aufruf in PowerShell:  irm https://raw.githubusercontent.com/__REPO__/main/install/windows.ps1 | iex
+# Aufruf in PowerShell:  irm https://raw.githubusercontent.com/felixwrk/mail-sortierer/main/install/windows.ps1 | iex
 $ErrorActionPreference = 'Stop'
-$repo = '__REPO__'
+$repo = 'felixwrk/mail-sortierer'
 Write-Host ''
 Write-Host '=========================================='
 Write-Host '  Mail-Sortierer wird installiert'

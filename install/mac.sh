@@ -1,7 +1,7 @@
 #!/bin/bash
 # Mail-Sortierer für den Mac installieren oder aktualisieren.
-# Aufruf im Terminal:  curl -fsSL https://raw.githubusercontent.com/__REPO__/main/install/mac.sh | bash
-REPO="__REPO__"
+# Aufruf im Terminal:  curl -fsSL https://raw.githubusercontent.com/felixwrk/mail-sortierer/main/install/mac.sh | bash
+REPO="felixwrk/mail-sortierer"
 set -e
 echo ""
 echo "=========================================="
