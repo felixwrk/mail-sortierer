@@ -36,6 +36,12 @@ irm https://raw.githubusercontent.com/felixwrk/mail-sortierer/main/install/windo
 
 Der Mail-Sortierer landet im Startmenü und auf dem Desktop und öffnet sich in einem eigenen Fenster.
 
+### iPhone
+
+Die iPhone-Version läuft als Web-App direkt im Browser: **https://felixwrk.github.io/mail-sortierer/**
+
+In Safari öffnen → **Teilen** → **Zum Home-Bildschirm**. Beim ersten Start führt die App durch die einmalige, kostenlose Einrichtung bei Google (Gmail-Zugang) und meldet sich dann mit deinem Google-Konto an.
+
 ---
 
 ## Erster Start
@@ -63,6 +69,7 @@ Account-Menü (oben rechts) → **Regeln bearbeiten**. Dort kannst du Absender u
 | `app/` | Mail-Dienst (`mailsortierer.py`, nur Python-Standardbibliothek) und Oberfläche (`index.html`) |
 | `mac/` | Fenster-Programm für den Mac (Swift/WebKit) |
 | `install/` | Installationsskripte |
+| `docs/` | iPhone-Web-App (GitHub Pages), gebaut mit `web/mkpwa.py` aus der Oberfläche + `web/gmail-backend.js` |
 | `.github/workflows/` | Baut bei jeder neuen Nummer in `VERSION` automatisch Mac-App und Windows-EXE und veröffentlicht sie |
 
 Neue Version veröffentlichen: Nummer in der Datei `VERSION` erhöhen und auf `main` hochladen – GitHub baut und veröffentlicht dann automatisch.
